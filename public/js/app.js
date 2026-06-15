@@ -29,6 +29,9 @@ jQuery(function() {
                 method: 'DELETE',
                 success: function() {
                     row.remove();
+                    if($('tbody').is(':empty') === true) {
+                        $('.task thead').remove();
+                    }
                 },
                 error: function(error) {
                     console.error('Error deleting task:', error);
@@ -64,7 +67,7 @@ jQuery(function() {
         if (!row.attr('data-id')) {
             row.attr('data-id', task.id);
         }
-
+        
         if(column === 'toggle') {
             const toggleBtn = createToggleButton(task, row);
             return row.append($('<td/>').append(toggleBtn));
@@ -87,6 +90,12 @@ jQuery(function() {
         return row.append($('<td/>').text(task[column]))
     }
 
+    function buildTableHeader() {
+        columns = ['id', 'description', 'completed', 'toggle', 'delete', 'edit'];
+
+        return columns;
+    }
+
     function fetchTasks(filter = 'all') {
         $.ajax({
             url: '/api/tasks?filter=' + filter,
@@ -99,22 +108,20 @@ jQuery(function() {
     
                 Object.keys(data).forEach(function(key) {
                     const task = data[key];
-                        if (columns.length === 0) {
-                            columns = Object.keys(task);          // lock in column order
-                            columns[columns.length] = 'toggle';
-                            columns[columns.length] = 'delete';
-                            columns[columns.length] = 'edit';
-                            const headRow = $('<tr/>');
-                            columns.forEach(column => headRow.append($('<th/>').text(column)));
-                            thead.append(headRow);
-                        }
-            
-                        const row = $('<tr/>');
-                        columns.forEach(column => {
-                            const task_item = createRow(column, row, task);
+                    if (columns.length === 0) {
+                        columns = buildTableHeader();
 
-                            return task_item;
-                        });
+                        const headRow = $('<tr/>');
+                        columns.forEach(column => headRow.append($('<th/>').text(column)));
+                        thead.append(headRow);
+                    }
+        
+                    const row = $('<tr/>');
+                    columns.forEach(column => {
+                        const task_item = createRow(column, row, task);
+
+                        return task_item;
+                    });
                     tbody.append(row);
                 });
             
@@ -180,6 +187,15 @@ jQuery(function() {
                         
                     });
                 } else {
+                    // in case it's the first task being created and the table header hasn't been built yet, build the table header first before appending the new row 
+                    if (columns.length === 0) {
+                        const thead = $('table thead');
+                        columns = buildTableHeader();
+
+                        const headRow = $('<tr/>');
+                        columns.forEach(column => headRow.append($('<th/>').text(column)));
+                        thead.append(headRow);
+                    }
                     columns.forEach(function(c) {
                         // Create a new row for the newly created task
                         createRow(c, newRow, response.task);
@@ -203,6 +219,7 @@ jQuery(function() {
         const selectedFilter = $(this).val();
         //clearing the main container before fetching new tasks based on the selected filter
         $('.main-container').empty();
+        columns = [];
         fetchTasks(selectedFilter);
     })
 
